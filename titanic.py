@@ -33,6 +33,39 @@ def add_miss_data(train_data):
     
     return train_data
 
+def get_combined_data():
+    train_df_org = pd.read_csv('data/train.csv')
+    test_df_org = pd.read_csv('data/test.csv')
+    test_df_org['Survived']=0
+    combined_train_test = train_df_org.append(test_df_org)
+    return combined_train_test
+
+def process_embarked(combined_train_test):
+    '''
+    '''
+    combined_train_test['Embarked'].fillna(combined_train_test['Embarked'].mode().iloc[0], inplace=True)
+    combined_train_test['Embarked'] = pd.factorize(combined_train_test['Embarked'])[0]
+    # df['column'] is a Series, but df[['column']] is a DataFrame
+    emb_dummies_df = pd.get_dummies(combined_train_test['Embarked'], prefix=combined_train_test[['Embarked']].columns[0])
+    combined_train_test = pd.concat([combined_train_test, emb_dummies_df],axis=1)
+
+    return combined_train_test
+
+def process_sex(combined_train_test):
+    '''
+    '''
+    combined_train_test['Sex'] = pd.factorize(combined_train_test['Sex'])[0]
+    # df['column'] is a Series, but df[['column']] is a DataFrame
+    sex_dummies_df = pd.get_dummies(combined_train_test['Sex'], prefix=combined_train_test[['Sex']].columns[0])
+    combined_train_test = pd.concat([combined_train_test, sex_dummies_df],axis=1)
+
+    return combined_train_test
+
+
 if __name__ == '__main__':
-    train_data, test_data = load_data()
-    add_miss_data(train_data)
+    #train_data, test_data = load_data()
+    #add_miss_data(train_data)
+    combined_train_test = get_combined_data()
+    combined_train_test = process_embarked(combined_train_test)
+    combined_train_test = process_sex(combined_train_test)
+    print(combined_train_test.info())
