@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -61,11 +62,35 @@ def process_sex(combined_train_test):
 
     return combined_train_test
 
+def process_name(combined_train_test):
+    combined_train_test['Title'] = combined_train_test['Name'].map(lambda x: re.compile(", (.*)\.").findall(x)[0])
+    # map similar titile to one specified
+    title_dict = {}
+    title_dict.update(dict.fromkeys(['Capt', 'Col', 'Major', 'Dr', 'Rev'], 'Officer'))
+    title_dict.update(dict.fromkeys(['Don', 'Sir', 'the Countess', 'Dona', 'Lady'], 'Royalty')) 
+    title_dict.update(dict.fromkeys(['Mme', 'Ms', 'Mrs'], 'Mrs')) 
+    title_dict.update(dict.fromkeys(['Mlle', 'Miss'], 'Miss')) 
+    title_dict.update(dict.fromkeys(['Mr'], 'Mr')) 
+    title_dict.update(dict.fromkeys(['Master','Jonkheer'], 'Master'))
+    combined_train_test['Title'] = combined_train_test['Title'].map(title_dict)
+    combined_train_test['Title'] = pd.factorize(combined_train_test['Title'])[0]
+    title_dummies_df = pd.get_dummies(combined_train_test['Title'], prefix=combined_train_test[['Title']].columns[0])    
+    combined_train_test = pd.concat([combined_train_test,title_dummies_df], axis=1)
+    combined_train_test['Name_len'] = combined_train_test['Name'].map(len)
+
+    return combined_train_test
+
+def process_fare(combined_train_test):
+    combined_train_test['Fare'] = combined_train_test[['Fare']].fillna(combined_train_test.groupby('Pclass').transform(np.mean))
+
+    return combined_train_test
 
 if __name__ == '__main__':
     #train_data, test_data = load_data()
     #add_miss_data(train_data)
     combined_train_test = get_combined_data()
-    combined_train_test = process_embarked(combined_train_test)
-    combined_train_test = process_sex(combined_train_test)
-    print(combined_train_test.info())
+    #combined_train_test = process_embarked(combined_train_test)
+    #combined_train_test = process_sex(combined_train_test)
+    #combined_train_test = process_name(combined_train_test)
+    combined_train_test = process_fare(combined_train_test)
+    print(combined_train_test['Fare'])
