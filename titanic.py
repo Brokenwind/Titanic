@@ -82,7 +82,10 @@ def process_name(combined_train_test):
 
 def process_fare(combined_train_test):
     combined_train_test['Fare'] = combined_train_test[['Fare']].fillna(combined_train_test.groupby('Pclass').transform(np.mean))
-
+    combined_train_test['Group_Ticket'] = combined_train_test['Fare'].groupby(combined_train_test['Ticket']).transform('count')
+    combined_train_test['Fare'] = combined_train_test['Fare'] / combined_train_test['Group_Ticket']
+    combined_train_test.drop(['Group_Ticket'], axis=1, inplace=True)
+    combined_train_test['Fare_bin_id'] = pd.factorize(combined_train_test['Fare_bin'])
     return combined_train_test
 
 if __name__ == '__main__':
@@ -93,4 +96,4 @@ if __name__ == '__main__':
     #combined_train_test = process_sex(combined_train_test)
     #combined_train_test = process_name(combined_train_test)
     combined_train_test = process_fare(combined_train_test)
-    print(combined_train_test['Fare'])
+    print(combined_train_test.info())
