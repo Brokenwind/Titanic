@@ -9,6 +9,7 @@ from sklearn import ensemble
 from sklearn import model_selection
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
 
 def load_data():
     train_data = pd.read_csv('data/train.csv')
@@ -118,7 +119,7 @@ def family_size_category(family_size):
 
 
 def process_family_size(combined_train_test):
-    from sklearn.preprocessing import LabelEncoder
+
 
     combined_train_test['Family_Size'] = combined_train_test['Parch'] + combined_train_test['SibSp'] + 1
     combined_train_test['Family_Cate'] = combined_train_test['Family_Size'].map(family_size_category)
@@ -178,6 +179,16 @@ def process_ticket(combined_train_test):
 
     return combined_train_test
 
+def processs_correlation(combined_train_test):
+    correlation = pd.DataFrame(combined_train_test[ ['Embarked', 'Sex', 'Title', 'Name_len', 'Family_Size', 'Family_Cate','Fare', 'Fare_bin_id', 'Pclass', 'Age', 'Ticket_Letter', 'Cabin']])
+    colormap = plt.cm.viridis
+    plt.figure(figsize=(14,12))
+    plt.title_dict('Person correlation of features', y=1.05, size=15)
+    sns.heatmap(correlation.astype(float).corr(),linewidths=0.1,vmax=1.0, square=True, cmap=colormap, linecolor='white', annot=True)
+
+def regularization(combined_train_test):
+    scale_age_fare = preprocessing.StandardScaler().fi)
+
 if __name__ == '__main__':
     # train_data, test_data = load_data()
     # add_miss_data(train_data)
@@ -189,4 +200,5 @@ if __name__ == '__main__':
     combined_train_test = process_family_size(combined_train_test)
     combined_train_test = process_age(combined_train_test)
     combined_train_test = process_ticket(combined_train_test)
+    
     print(combined_train_test.info())
