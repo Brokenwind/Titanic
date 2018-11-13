@@ -10,6 +10,11 @@ from sklearn import model_selection
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 def load_data():
     train_data = pd.read_csv('data/train.csv')
@@ -187,8 +192,23 @@ def processs_correlation(combined_train_test):
     sns.heatmap(correlation.astype(float).corr(),linewidths=0.1,vmax=1.0, square=True, cmap=colormap, linecolor='white', annot=True)
 
 def regularization(combined_train_test):
-    scale_age_fare = preprocessing.StandardScaler().fi)
+    scale_age_fare = preprocessing.StandardScaler().fit(combined_train_test[['Age','Fare', 'Name_len']])
+    combined_train_test[['Age','Fare', 'Name_len']] = scale_age_fare.transform(combined_train_test[['Age','Fare', 'Name_len']])
 
+def get_top_n_features(titanic_train_X, titanic_train_Y, top_n_features):
+    # random forest
+    rf_est = RandomForestClassifier(random_state=0)
+    rf_param_grid = {'n_estimators': [500], 'min_samples_split': [2, 3], 'max_depth': [20]}
+    rf_grid = model_selection.GridSearchCV(rf_est, rf_param_grid, n_jobs=25, cv=10, verbose=1)
+    rf_grid.fit(titanic_train_X,titanic_train_Y)
+    print('Top N Features Best Ada Params:' + str(rf_grid.best_params_)) 
+    print('Top N Features Best Ada Score:' + str(rf_grid.best_score_))
+    print('Top N Features Ada Train Score:' + str(rf_grid.score(titanic_train_data_X, titanic_train_data_Y)))
+    feature_imp_sorted_rf = pd.DataFrame({'feature': list(titanic_train_data_X), 'importance': rf_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    features_top_n_rf = feature_imp_sorted_rf.head(top_n_features)['feature']
+    print('Sample 10 Features from RF Classifier')
+    print(str(features_top_n_rf[:10]))
+    
 if __name__ == '__main__':
     # train_data, test_data = load_data()
     # add_miss_data(train_data)
@@ -200,5 +220,5 @@ if __name__ == '__main__':
     combined_train_test = process_family_size(combined_train_test)
     combined_train_test = process_age(combined_train_test)
     combined_train_test = process_ticket(combined_train_test)
-    
+    regularization(combined_train_test)
     print(combined_train_test.info())
