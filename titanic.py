@@ -317,7 +317,7 @@ def stacking_level_two(x_train, y_train, x_test):
     return predictions
 
 if __name__ == '__main__':
-    # train_data, test_data = load_data()
+    train_data_org, test_data_org = load_data()
     # add_miss_data(train_data)
     combined_train_test = get_combined_data()
     combined_train_test = process_embarked(combined_train_test)
@@ -347,5 +347,8 @@ if __name__ == '__main__':
     oof_train, oof_test = stacking_level_one(x_train,y_train,x_test)
     x_train_xg = np.concatenate(oof_train, axis=1)
     x_test_xg = np.concatenate(oof_test, axis=1)
-    stacking_level_two(x_train_xg, y_train, x_test_xg)
+    predictions = stacking_level_two(x_train_xg, y_train, x_test_xg)
+    PassengerId = test_data_org['PassengerId']
+    StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
+    StackingSubmission.to_csv('StackingSubmission.csv', index=False, sep=',')
     
