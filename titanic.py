@@ -20,6 +20,7 @@ from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
+from sklearn.model_selection import learning_curve
 
 def load_data():
     train_data = pd.read_csv('data/train.csv')
@@ -316,6 +317,83 @@ def stacking_level_two(x_train, y_train, x_test):
     print(predictions)
     return predictions
 
+def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None, n_jobs=1, train_sizes=np.linspace(.1, 1.0, 5),
+                        verbose=0):
+    '''
+    Generate a simple plot of the test and traning learning curve.
+    Parameters
+    ----------
+    estimator : object type that implements the "fit" and "predict" methods
+        An object of that type which is cloned for each validation.
+    title : string
+        Title for the chart.
+    X : array-like, shape (n_samples, n_features)
+        Training vector, where n_samples is the number of samples and
+        n_features is the number of features.
+    y : array-like, shape (n_samples) or (n_samples, n_features), optional
+        Target relative to X for classification or regression;
+        None for unsupervised learning.
+    ylim : tuple, shape (ymin, ymax), optional
+        Defines minimum and maximum yvalues plotted.
+    cv : integer, cross-validation generator, optional
+        If an integer is passed, it is the number of folds (defaults to 3).
+        Specific cross-validation objects can be passed, see
+        sklearn.cross_validation module for the list of possible objects
+    n_jobs : integer, optional
+        Number of jobs to run in parallel (default 1).
+    '''
+    plt.figure()
+    plt.title(title)
+    if ylim is not None:
+        plt.ylim(*ylim)
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+    train_sizes, train_scores, test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
+                                                            train_sizes=train_sizes)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    plt.grid()
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+             label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+             label="Cross-validation score")
+    plt.legend(loc="best")
+    return plt
+
+
+def show_learning_curves(x_train, y_train):
+    X = x_train
+    Y = y_train
+    # RandomForest
+    rf_parameters = {'n_jobs': -1, 'n_estimators': 500, 'warm_start': True, 'max_depth': 6, 'min_samples_leaf': 2,
+                     'max_features': 'sqrt', 'verbose': 0}
+    # AdaBoost
+    ada_parameters = {'n_estimators': 500, 'learning_rate': 0.1}
+    # ExtraTrees
+    et_parameters = {'n_jobs': -1, 'n_estimators': 500, 'max_depth': 8, 'min_samples_leaf': 2, 'verbose': 0}
+    # GradientBoosting
+    gb_parameters = {'n_estimators': 500, 'max_depth': 5, 'min_samples_leaf': 2, 'verbose': 0}
+    # DecisionTree
+    dt_parameters = {'max_depth': 8}
+    # KNeighbors
+    knn_parameters = {'n_neighbors': 2}
+    # SVM
+    svm_parameters = {'kernel': 'linear', 'C': 0.025}
+    # XGB
+    gbm_parameters = {'n_estimators': 2000, 'max_depth': 4, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
+                      'colsample_bytree': 0.8, 'objective': 'binary:logistic', 'nthread': -1, 'scale_pos_weight': 1}
+    title = "Learning Curves"
+    plot_learning_curve(RandomForestClassifier(**rf_parameters), title, X, Y, cv=None, n_jobs=4,
+                        train_sizes=[50, 100, 150, 200, 250, 350, 400, 450, 500])
+    plt.show()
+
 if __name__ == '__main__':
     train_data_org, test_data_org = load_data()
     # add_miss_data(train_data)
@@ -351,4 +429,5 @@ if __name__ == '__main__':
     PassengerId = test_data_org['PassengerId']
     StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
     StackingSubmission.to_csv('StackingSubmission.csv', index=False, sep=',')
+    show_learning_curves(x_train, y_train)
     
