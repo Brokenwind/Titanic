@@ -7,6 +7,7 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn import ensemble
 from sklearn import model_selection
+from sklearn import preprocessing
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
@@ -195,20 +196,46 @@ def regularization(combined_train_test):
     scale_age_fare = preprocessing.StandardScaler().fit(combined_train_test[['Age','Fare', 'Name_len']])
     combined_train_test[['Age','Fare', 'Name_len']] = scale_age_fare.transform(combined_train_test[['Age','Fare', 'Name_len']])
 
-def get_top_n_features(titanic_train_X, titanic_train_Y, top_n_features):
+    return combined_train_test
+
+
+def get_top_n_features(titanic_train_data_X, titanic_train_data_Y, top_n_features):
     # random forest
     rf_est = RandomForestClassifier(random_state=0)
     rf_param_grid = {'n_estimators': [500], 'min_samples_split': [2, 3], 'max_depth': [20]}
     rf_grid = model_selection.GridSearchCV(rf_est, rf_param_grid, n_jobs=25, cv=10, verbose=1)
-    rf_grid.fit(titanic_train_X,titanic_train_Y)
+    rf_grid.fit(titanic_train_data_X,titanic_train_data_Y)
     print('Top N Features Best Ada Params:' + str(rf_grid.best_params_)) 
     print('Top N Features Best Ada Score:' + str(rf_grid.best_score_))
     print('Top N Features Ada Train Score:' + str(rf_grid.score(titanic_train_data_X, titanic_train_data_Y)))
-    feature_imp_sorted_rf = pd.DataFrame({'feature': list(titanic_train_data_X), 'importance': rf_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    feature_imp_sorted_rf = pd.DataFrame({'feature': list(titanic_train_data_X.columns), 'importance': rf_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
     features_top_n_rf = feature_imp_sorted_rf.head(top_n_features)['feature']
     print('Sample 10 Features from RF Classifier')
     print(str(features_top_n_rf[:10]))
-    
+
+    # ada boost
+    ada_est = ensemble.AdaBoostClassifier(random_state=42)
+    ada_param_grid = {'n_estimators':[500], 'learning_rate':[0.5,0.6]}
+    ada_grid = model_selection.GridSearchCV(ada_est,ada_param_grid, n_jobs=25,cv=10, verbose=1)
+    ada_grid.fit(titanic_train_data_X, titanic_train_data_Y)
+    feature_imp_sorted_ada = pd.DataFrame({'feature': list(titanic_train_data_X.columns), 'importance': ada_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    features_top_n_ada = feature_imp_sorted_ada.head(top_n_features)['feature']
+    print('Sample 10 Features from Ada Classifier')
+    print(str(features_top_n_ada[:10]))
+
+    # ExtraTree
+    et_est = ensemble.ExtraTreesClassifier(random_state=42)
+    et_param_grid = {'n_estimators': [500], 'min_samples_split': [3, 4], 'max_depth': [15]}
+    et_grid = model_selection.GridSearchCV(et_est, et_param_grid, n_jobs=25, cv=10, verbose=1)
+    et_grid.fit(titanic_train_data_X, titanic_train_data_Y)
+    #排序
+    feature_imp_sorted_et = pd.DataFrame({'feature': list(titanic_train_data_X), 'importance': et_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    features_top_n_et = feature_imp_sorted_et.head(top_n_features)['feature']
+    print('Sample 10 Features from ET Classifier:')
+    print(str(features_top_n_et[:10]))
+
+
+
 if __name__ == '__main__':
     # train_data, test_data = load_data()
     # add_miss_data(train_data)
@@ -220,11 +247,12 @@ if __name__ == '__main__':
     combined_train_test = process_family_size(combined_train_test)
     combined_train_test = process_age(combined_train_test)
     combined_train_test = process_ticket(combined_train_test)
-    regularization(combined_train_test)
+    combined_train_test = regularization(combined_train_test)
+    combined_train_test.drop(['PassengerId', 'Embarked', 'Sex', 'Name', 'Title', 'Fare_bin_id', 'Pclass_Fare_Category', 'Parch', 'SibSp', 'Family_Size_Category', 'Ticket'],axis=1,inplace=True)
     train_data = combined_train_test[:891] 
     test_data = combined_train_test[891:] 
     titanic_train_data_X = train_data.drop(['Survived'],axis=1) 
     titanic_train_data_Y = train_data['Survived'] 
     titanic_test_data_X = test_data.drop(['Survived'],axis=1)
-
+    get_top_n_features(titanic_train_data_X, titanic_train_data_Y, 10)
     print(combined_train_test.info())
