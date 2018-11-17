@@ -221,4 +221,10 @@ if __name__ == '__main__':
     combined_train_test = process_age(combined_train_test)
     combined_train_test = process_ticket(combined_train_test)
     regularization(combined_train_test)
+    train_data = combined_train_test[:891] 
+    test_data = combined_train_test[891:] 
+    titanic_train_data_X = train_data.drop(['Survived'],axis=1) 
+    titanic_train_data_Y = train_data['Survived'] 
+    titanic_test_data_X = test_data.drop(['Survived'],axis=1)
+
     print(combined_train_test.info())
