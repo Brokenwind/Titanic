@@ -328,7 +328,7 @@ if __name__ == '__main__':
     combined_train_test = process_age(combined_train_test)
     combined_train_test = process_ticket(combined_train_test)
     combined_train_test = regularization(combined_train_test)
-    combined_train_test.drop(['PassengerId', 'Embarked', 'Sex', 'Name', 'Title', 'Fare_bin_id', 'Pclass_Fare_Category', 'Parch', 'SibSp', 'Family_Size_Category', 'Ticket'],axis=1,inplace=True)
+    combined_train_test.drop(['PassengerId', 'Embarked', 'Sex', 'Name', 'Title', 'Fare_bin_id', 'Parch', 'SibSp', 'Family_Cate', 'Ticket'],axis=1,inplace=True)
     train_data = combined_train_test[:891] 
     test_data = combined_train_test[891:] 
     titanic_train_data_X = train_data.drop(['Survived'],axis=1) 
