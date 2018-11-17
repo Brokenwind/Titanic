@@ -234,6 +234,24 @@ def get_top_n_features(titanic_train_data_X, titanic_train_data_Y, top_n_feature
     print('Sample 10 Features from ET Classifier:')
     print(str(features_top_n_et[:10]))
 
+    # GradientBoosting
+    gb_est = GradientBoostingClassifier(random_state=0)
+    gb_param_grid = {'n_estimators':[500], 'learning_rate':[0.01,0.1], 'max_depth':[20]}
+    gb_grid = model_selection.GridSearchCV(gb_est, gb_param_grid, n_jobs=25, cv=10, verbose=1)
+    gb_grid.fit(titanic_train_data_X,titanic_train_data_Y)
+    print('Top N Features Best GB Params:' + str(gb_grid.best_params_))
+    print('Top N Features Best GB Score:' + str(gb_grid.best_score_))
+    print('Top N Features GB Train Score:' + str(gb_grid.score(titanic_train_data_X, titanic_train_data_Y)))
+    feature_imp_sorted_gb = pd.DataFrame({'feature': list(titanic_train_data_X), 'importance': gb_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    features_top_n_gb = feature_imp_sorted_gb.head(top_n_features)['feature']
+    print('Sample 10 Features from GB Classifier:')
+    print(str(features_top_n_gb[:10]))
+
+    # merge the three models, and drop duplicates
+    features_top_n = pd.concat([features_top_n_ada, features_top_n_et, features_top_n_ada, features_top_n_gb],ignore_index=True).drop_duplicates()
+    features_importance = pd.concat([feature_imp_sorted_rf, feature_imp_sorted_ada, feature_imp_sorted_et, feature_imp_sorted_gb, feature_imp_sorted_gb], ignore_index = True)
+
+    return features_top_n, features_importance
 
 
 if __name__ == '__main__':
@@ -254,5 +272,5 @@ if __name__ == '__main__':
     titanic_train_data_X = train_data.drop(['Survived'],axis=1) 
     titanic_train_data_Y = train_data['Survived'] 
     titanic_test_data_X = test_data.drop(['Survived'],axis=1)
-    get_top_n_features(titanic_train_data_X, titanic_train_data_Y, 10)
+    features_top_n, features_importance = get_top_n_features(titanic_train_data_X, titanic_train_data_Y, 10)
     print(combined_train_test.info())
