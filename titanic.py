@@ -458,7 +458,7 @@ def rf_learn_and_output(x_train, y_train, x_test, PassengerId):
 
 
 def gbm_learn_and_output(x_train, y_train, x_test, PassengerId):
-    gbm_parameters = {'n_estimators': 500, 'max_depth': 5, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
+    gbm_parameters = {'n_estimators': 50, 'max_depth': 5, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
                       'colsample_bytree': 0.8, 'objective': 'binary:logistic', 'nthread': -1, 'scale_pos_weight': 1}
     gbm = XGBClassifier(**gbm_parameters)
     gbm.fit(x_train, y_train)
@@ -471,7 +471,7 @@ def show_learning_curves(x_train, y_train):
     X = x_train
     Y = y_train
     # RandomForest
-    rf_parameters = {'n_jobs': -1, 'n_estimators': 500, 'warm_start': True, 'max_depth': 6, 'min_samples_leaf': 2,
+    rf_parameters = {'n_jobs': -1, 'n_estimators': 500, 'warm_start': True, 'max_depth': 5, 'min_samples_leaf': 2,
                      'max_features': 'sqrt', 'verbose': 0}
     # AdaBoost
     ada_parameters = {'n_estimators': 500, 'learning_rate': 0.1}
@@ -486,11 +486,11 @@ def show_learning_curves(x_train, y_train):
     # SVM
     svm_parameters = {'kernel': 'linear', 'C': 0.025}
     # XGB
-    gbm_parameters = {'n_estimators': 500, 'max_depth': 5, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
+    gbm_parameters = {'n_estimators': 50, 'max_depth': 5, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
                       'colsample_bytree': 0.8, 'objective': 'binary:logistic', 'nthread': -1, 'scale_pos_weight': 1}
     title = "Learning Curves"
-    plot_learning_curve(ExtraTreesClassifier(**et_parameters), title, X, Y, cv=None, n_jobs=4,
-                        train_sizes=[50, 100, 150, 200, 250, 350, 400, 450, 500])
+    plot_learning_curve(XGBClassifier(**gbm_parameters), title, X, Y, cv=None, n_jobs=4,
+                        train_sizes=[50, 100, 150, 200, 250, 350, 400, 450, 500,550])
     plt.show()
 
 
@@ -533,11 +533,11 @@ if __name__ == '__main__':
     x_train_xg = np.concatenate(oof_train, axis=1)
     x_test_xg = np.concatenate(oof_test, axis=1)
     predictions = stacking_level_two(x_train_xg, y_train, x_test_xg)
-
+    PassengerId = test_data_org['PassengerId']
     StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
     StackingSubmission.to_csv('StackingSubmission.csv', index=False, sep=',')
     '''
     PassengerId = test_data_org['PassengerId']
-    show_learning_curves(x_train, y_train)
-    rf_learn_and_output(x_train, y_train, x_test, PassengerId)
-    # gbm_learn_and_output(x_train, y_train, x_test, PassengerId)
+    #show_learning_curves(x_train, y_train)
+    #rf_learn_and_output(x_train, y_train, x_test, PassengerId)
+    gbm_learn_and_output(x_train, y_train, x_test, PassengerId)
