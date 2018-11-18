@@ -22,6 +22,7 @@ from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.model_selection import learning_curve
 
+
 def load_data():
     train_data = pd.read_csv('data/train.csv')
     test_data = pd.read_csv('data/test.csv')
@@ -130,8 +131,6 @@ def family_size_category(family_size):
 
 
 def process_family_size(combined_train_test):
-
-
     combined_train_test['Family_Size'] = combined_train_test['Parch'] + combined_train_test['SibSp'] + 1
     combined_train_test['Family_Cate'] = combined_train_test['Family_Size'].map(family_size_category)
     le_family = LabelEncoder()
@@ -140,7 +139,7 @@ def process_family_size(combined_train_test):
     family_size_dummies_df = pd.get_dummies(combined_train_test['Family_Cate'],
                                             prefix=combined_train_test[['Family_Cate']].columns[0])
     combined_train_test = pd.concat([combined_train_test, family_size_dummies_df], axis=1)
-    
+
     return combined_train_test
 
 
@@ -155,33 +154,37 @@ def process_age(combined_train_test):
     # model gbm
     gbm_reg = GradientBoostingRegressor(random_state=42)
     gbm_reg_param_grid = {'n_estimators': [2000], 'max_depth': [4], 'learning_rate': [0.01], 'max_features': [3]}
-    gbm_reg_grid = model_selection.GridSearchCV(gbm_reg,gbm_reg_param_grid,cv=10, n_jobs=25,verbose=1, scoring='neg_mean_squared_error')
-    gbm_reg_grid.fit(missing_age_train_X,missing_age_train_Y)
+    gbm_reg_grid = model_selection.GridSearchCV(gbm_reg, gbm_reg_param_grid, cv=10, n_jobs=25, verbose=1,
+                                                scoring='neg_mean_squared_error')
+    gbm_reg_grid.fit(missing_age_train_X, missing_age_train_Y)
     print('Age feature Best GB Params:' + str(gbm_reg_grid.best_params_))
     print('Age feature Best GB Score:' + str(gbm_reg_grid.best_score_))
-    print('GB Train error for age:'+str(gbm_reg_grid.score(missing_age_train_X,missing_age_train_Y)))
-    missing_age_test.loc[:,'Age_GB'] = gbm_reg_grid.predict(missing_age_test_X)
+    print('GB Train error for age:' + str(gbm_reg_grid.score(missing_age_train_X, missing_age_train_Y)))
+    missing_age_test.loc[:, 'Age_GB'] = gbm_reg_grid.predict(missing_age_test_X)
     print(missing_age_test['Age_GB'][:4])
     # model rf
     rf_reg = RandomForestRegressor()
     rf_reg_param_grid = {'n_estimators': [200], 'max_depth': [5], 'random_state': [0]}
-    rf_reg_grid = model_selection.GridSearchCV(rf_reg,rf_reg_param_grid,cv=10, n_jobs=25,verbose=1, scoring='neg_mean_squared_error')
-    rf_reg_grid.fit(missing_age_train_X,missing_age_train_Y)
+    rf_reg_grid = model_selection.GridSearchCV(rf_reg, rf_reg_param_grid, cv=10, n_jobs=25, verbose=1,
+                                               scoring='neg_mean_squared_error')
+    rf_reg_grid.fit(missing_age_train_X, missing_age_train_Y)
     print('Age feature Best RF Params:' + str(rf_reg_grid.best_params_))
     print('Age feature Best RF Score:' + str(rf_reg_grid.best_score_))
-    print('GB Train error for age:'+str(rf_reg_grid.score(missing_age_train_X,missing_age_train_Y)))
-    missing_age_test.loc[:,'Age_RF'] = rf_reg_grid.predict(missing_age_test_X)
+    print('GB Train error for age:' + str(rf_reg_grid.score(missing_age_train_X, missing_age_train_Y)))
+    missing_age_test.loc[:, 'Age_RF'] = rf_reg_grid.predict(missing_age_test_X)
     print(missing_age_test['Age_RF'][:4])
 
-    missing_age_test.loc[:,'Age'] = missing_age_test[['Age_GB','Age_RF']].mean(axis=1)
-    print(missing_age_test.loc[:,'Age'])
+    missing_age_test.loc[:, 'Age'] = missing_age_test[['Age_GB', 'Age_RF']].mean(axis=1)
+    print(missing_age_test.loc[:, 'Age'])
     combined_train_test.loc[combined_train_test['Age'].isnull(), 'Age'] = missing_age_test['Age']
 
     return combined_train_test
 
+
 def process_ticket(combined_train_test):
     combined_train_test['Ticket_Letter'] = combined_train_test['Ticket'].str.split().str[0]
-    combined_train_test['Ticket_Letter'] = combined_train_test['Ticket_Letter'].apply(lambda x: 'U0' if x.isnumeric() else x)
+    combined_train_test['Ticket_Letter'] = combined_train_test['Ticket_Letter'].apply(
+        lambda x: 'U0' if x.isnumeric() else x)
     # 如果要提取数字信息，则也可以这样做，现在我们对数字票单纯地分为一类。
     # combined_train_test['Ticket_Number'] = combined_train_test['Ticket'].apply(lambda x: pd.to_numeric(x, errors='coerce'))
     # combined_train_test['Ticket_Number'].fillna(0, inplace=True)
@@ -190,16 +193,69 @@ def process_ticket(combined_train_test):
 
     return combined_train_test
 
+
+def process_cabin(combined_train_test):
+    combined_train_test.loc[combined_train_test.Cabin.isnull(), 'Cabin'] = 'U0'
+    combined_train_test['Cabin'] = combined_train_test['Cabin'].apply(lambda x: 0 if x == 'U0' else 1)
+
+    return combined_train_test
+
+
+# 建立PClass Fare Category
+def pclass_fare_category(df, pclass1_mean_fare, pclass2_mean_fare, pclass3_mean_fare):
+    if df['Pclass'] == 1:
+        if df['Fare'] <= pclass1_mean_fare:
+            return 'Pclass1_Low'
+        else:
+            return 'Pclass1_High'
+    elif df['Pclass'] == 2:
+        if df['Fare'] <= pclass2_mean_fare:
+            return 'Pclass2_Low'
+        else:
+            return 'Pclass2_High'
+    elif df['Pclass'] == 3:
+        if df['Fare'] <= pclass3_mean_fare:
+            return 'Pclass3_Low'
+        else:
+            return 'Pclass3_High'
+
+
+def process_pclass(combined_train_test):
+    Pclass1_mean_fare = combined_train_test['Fare'].groupby(by=combined_train_test['Pclass']).mean().get([1]).values[0]
+    Pclass2_mean_fare = combined_train_test['Fare'].groupby(by=combined_train_test['Pclass']).mean().get([2]).values[0]
+    Pclass3_mean_fare = combined_train_test['Fare'].groupby(by=combined_train_test['Pclass']).mean().get([3]).values[0]
+    # 建立Pclass_Fare Category
+    combined_train_test['Pclass_Fare_Category'] = combined_train_test.apply(pclass_fare_category, args=(
+        Pclass1_mean_fare, Pclass2_mean_fare, Pclass3_mean_fare), axis=1)
+    pclass_level = LabelEncoder()
+    # 给每一项添加标签
+    pclass_level.fit(np.array(
+        ['Pclass1_Low', 'Pclass1_High', 'Pclass2_Low', 'Pclass2_High', 'Pclass3_Low', 'Pclass3_High']))
+    # 转换成数值
+    combined_train_test['Pclass_Fare_Category'] = pclass_level.transform(combined_train_test['Pclass_Fare_Category'
+                                                                         ])
+    # dummy 转换
+    pclass_dummies_df = pd.get_dummies(combined_train_test['Pclass_Fare_Category']).rename(
+        columns=lambda x: 'Pclass' + str(x))
+    combined_train_test = pd.concat([combined_train_test, pclass_dummies_df], axis=1)
+
+    return  combined_train_test
+
 def processs_correlation(combined_train_test):
-    correlation = pd.DataFrame(combined_train_test[ ['Embarked', 'Sex', 'Title', 'Name_len', 'Family_Size', 'Family_Cate','Fare', 'Fare_bin_id', 'Pclass', 'Age', 'Ticket_Letter', 'Cabin']])
+    correlation = pd.DataFrame(combined_train_test[
+                                   ['Embarked', 'Sex', 'Title', 'Name_len', 'Family_Size', 'Family_Cate', 'Fare',
+                                    'Fare_bin_id', 'Pclass', 'Age', 'Ticket_Letter', 'Cabin']])
     colormap = plt.cm.viridis
-    plt.figure(figsize=(14,12))
+    plt.figure(figsize=(14, 12))
     plt.title_dict('Person correlation of features', y=1.05, size=15)
-    sns.heatmap(correlation.astype(float).corr(),linewidths=0.1,vmax=1.0, square=True, cmap=colormap, linecolor='white', annot=True)
+    sns.heatmap(correlation.astype(float).corr(), linewidths=0.1, vmax=1.0, square=True, cmap=colormap,
+                linecolor='white', annot=True)
+
 
 def regularization(combined_train_test):
-    scale_age_fare = preprocessing.StandardScaler().fit(combined_train_test[['Age','Fare', 'Name_len']])
-    combined_train_test[['Age','Fare', 'Name_len']] = scale_age_fare.transform(combined_train_test[['Age','Fare', 'Name_len']])
+    scale_age_fare = preprocessing.StandardScaler().fit(combined_train_test[['Age', 'Fare', 'Name_len']])
+    combined_train_test[['Age', 'Fare', 'Name_len']] = scale_age_fare.transform(
+        combined_train_test[['Age', 'Fare', 'Name_len']])
 
     return combined_train_test
 
@@ -209,21 +265,25 @@ def get_top_n_features(titanic_train_data_X, titanic_train_data_Y, top_n_feature
     rf_est = RandomForestClassifier(random_state=0)
     rf_param_grid = {'n_estimators': [500], 'min_samples_split': [2, 3], 'max_depth': [20]}
     rf_grid = model_selection.GridSearchCV(rf_est, rf_param_grid, n_jobs=25, cv=10, verbose=1)
-    rf_grid.fit(titanic_train_data_X,titanic_train_data_Y)
-    print('Top N Features Best Ada Params:' + str(rf_grid.best_params_)) 
+    rf_grid.fit(titanic_train_data_X, titanic_train_data_Y)
+    print('Top N Features Best Ada Params:' + str(rf_grid.best_params_))
     print('Top N Features Best Ada Score:' + str(rf_grid.best_score_))
     print('Top N Features Ada Train Score:' + str(rf_grid.score(titanic_train_data_X, titanic_train_data_Y)))
-    feature_imp_sorted_rf = pd.DataFrame({'feature': list(titanic_train_data_X.columns), 'importance': rf_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    feature_imp_sorted_rf = pd.DataFrame({'feature': list(titanic_train_data_X.columns),
+                                          'importance': rf_grid.best_estimator_.feature_importances_}).sort_values(
+        'importance', ascending=False)
     features_top_n_rf = feature_imp_sorted_rf.head(top_n_features)['feature']
     print('Sample 10 Features from RF Classifier')
     print(str(features_top_n_rf[:10]))
 
     # ada boost
     ada_est = ensemble.AdaBoostClassifier(random_state=42)
-    ada_param_grid = {'n_estimators':[500], 'learning_rate':[0.5,0.6]}
-    ada_grid = model_selection.GridSearchCV(ada_est,ada_param_grid, n_jobs=25,cv=10, verbose=1)
+    ada_param_grid = {'n_estimators': [500], 'learning_rate': [0.5, 0.6]}
+    ada_grid = model_selection.GridSearchCV(ada_est, ada_param_grid, n_jobs=25, cv=10, verbose=1)
     ada_grid.fit(titanic_train_data_X, titanic_train_data_Y)
-    feature_imp_sorted_ada = pd.DataFrame({'feature': list(titanic_train_data_X.columns), 'importance': ada_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    feature_imp_sorted_ada = pd.DataFrame({'feature': list(titanic_train_data_X.columns),
+                                           'importance': ada_grid.best_estimator_.feature_importances_}).sort_values(
+        'importance', ascending=False)
     features_top_n_ada = feature_imp_sorted_ada.head(top_n_features)['feature']
     print('Sample 10 Features from Ada Classifier')
     print(str(features_top_n_ada[:10]))
@@ -233,30 +293,38 @@ def get_top_n_features(titanic_train_data_X, titanic_train_data_Y, top_n_feature
     et_param_grid = {'n_estimators': [500], 'min_samples_split': [3, 4], 'max_depth': [15]}
     et_grid = model_selection.GridSearchCV(et_est, et_param_grid, n_jobs=25, cv=10, verbose=1)
     et_grid.fit(titanic_train_data_X, titanic_train_data_Y)
-    #排序
-    feature_imp_sorted_et = pd.DataFrame({'feature': list(titanic_train_data_X), 'importance': et_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    # 排序
+    feature_imp_sorted_et = pd.DataFrame({'feature': list(titanic_train_data_X),
+                                          'importance': et_grid.best_estimator_.feature_importances_}).sort_values(
+        'importance', ascending=False)
     features_top_n_et = feature_imp_sorted_et.head(top_n_features)['feature']
     print('Sample 10 Features from ET Classifier:')
     print(str(features_top_n_et[:10]))
 
     # GradientBoosting
     gb_est = GradientBoostingClassifier(random_state=0)
-    gb_param_grid = {'n_estimators':[500], 'learning_rate':[0.01,0.1], 'max_depth':[20]}
+    gb_param_grid = {'n_estimators': [500], 'learning_rate': [0.01, 0.1], 'max_depth': [20]}
     gb_grid = model_selection.GridSearchCV(gb_est, gb_param_grid, n_jobs=25, cv=10, verbose=1)
-    gb_grid.fit(titanic_train_data_X,titanic_train_data_Y)
+    gb_grid.fit(titanic_train_data_X, titanic_train_data_Y)
     print('Top N Features Best GB Params:' + str(gb_grid.best_params_))
     print('Top N Features Best GB Score:' + str(gb_grid.best_score_))
     print('Top N Features GB Train Score:' + str(gb_grid.score(titanic_train_data_X, titanic_train_data_Y)))
-    feature_imp_sorted_gb = pd.DataFrame({'feature': list(titanic_train_data_X), 'importance': gb_grid.best_estimator_.feature_importances_}).sort_values('importance', ascending=False)
+    feature_imp_sorted_gb = pd.DataFrame({'feature': list(titanic_train_data_X),
+                                          'importance': gb_grid.best_estimator_.feature_importances_}).sort_values(
+        'importance', ascending=False)
     features_top_n_gb = feature_imp_sorted_gb.head(top_n_features)['feature']
     print('Sample 10 Features from GB Classifier:')
     print(str(features_top_n_gb[:10]))
 
     # merge the three models, and drop duplicates
-    features_top_n = pd.concat([features_top_n_ada, features_top_n_et, features_top_n_ada, features_top_n_gb],ignore_index=True).drop_duplicates()
-    features_importance = pd.concat([feature_imp_sorted_rf, feature_imp_sorted_ada, feature_imp_sorted_et, feature_imp_sorted_gb, feature_imp_sorted_gb], ignore_index = True)
+    features_top_n = pd.concat([features_top_n_ada, features_top_n_et, features_top_n_ada, features_top_n_gb],
+                               ignore_index=True).drop_duplicates()
+    features_importance = pd.concat(
+        [feature_imp_sorted_rf, feature_imp_sorted_ada, feature_imp_sorted_et, feature_imp_sorted_gb,
+         feature_imp_sorted_gb], ignore_index=True)
 
     return features_top_n, features_importance
+
 
 def get_out_fold(clf, x_train, y_train, x_test):
     n_train = titanic_train_data_X.shape[0]
@@ -278,6 +346,7 @@ def get_out_fold(clf, x_train, y_train, x_test):
         oof_test_skf[i, :] = clf.predict(x_test)
     oof_test[:] = oof_test_skf.mean(axis=0)
     return oof_train.reshape(-1, 1), oof_test.reshape(-1, 1)
+
 
 def stacking_level_one(x_train, y_train, x_test):
     rf = RandomForestClassifier(n_estimators=500, warm_start=True, max_features='sqrt', max_depth=6,
@@ -310,12 +379,15 @@ def stacking_level_one(x_train, y_train, x_test):
 
     return oof_train, oof_test
 
+
 def stacking_level_two(x_train, y_train, x_test):
-    gbm = XGBClassifier(n_estimators=2000, max_depth=4, min_child_weight=2, gamma=0.9, subsample=0.8,colsample_bytree=0.8, objective= 'binary:logistic', nthread= -1, scale_pos_weight=1)
+    gbm = XGBClassifier(n_estimators=2000, max_depth=4, min_child_weight=2, gamma=0.9, subsample=0.8,
+                        colsample_bytree=0.8, objective='binary:logistic', nthread=-1, scale_pos_weight=1)
     gbm.fit(x_train, y_train)
     predictions = gbm.predict(x_test)
     print(predictions)
     return predictions
+
 
 def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None, n_jobs=1, train_sizes=np.linspace(.1, 1.0, 5),
                         verbose=0):
@@ -368,6 +440,33 @@ def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None, n_jobs=1, tr
     return plt
 
 
+def et_learn_and_output(x_train, y_train, x_test, PassengerId):
+    et = ExtraTreesClassifier(n_estimators=500, n_jobs=-1, max_depth=8, min_samples_leaf=2, verbose=0)
+    et.fit(x_train, y_train)
+    predictions = et.predict(x_test)
+    StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
+    StackingSubmission.to_csv('ETSubmission.csv', index=False, sep=',')
+
+
+def rf_learn_and_output(x_train, y_train, x_test, PassengerId):
+    rf = RandomForestClassifier(n_estimators=500, warm_start=True, max_features='sqrt', max_depth=6,
+                                min_samples_split=3, min_samples_leaf=2, n_jobs=-1, verbose=0)
+    rf.fit(x_train, y_train)
+    predictions = rf.predict(x_test)
+    StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
+    StackingSubmission.to_csv('RFSubmission.csv', index=False, sep=',')
+
+
+def gbm_learn_and_output(x_train, y_train, x_test, PassengerId):
+    gbm_parameters = {'n_estimators': 500, 'max_depth': 5, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
+                      'colsample_bytree': 0.8, 'objective': 'binary:logistic', 'nthread': -1, 'scale_pos_weight': 1}
+    gbm = XGBClassifier(**gbm_parameters)
+    gbm.fit(x_train, y_train)
+    predictions = gbm.predict(x_test)
+    StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
+    StackingSubmission.to_csv('GBMSubmission.csv', index=False, sep=',')
+
+
 def show_learning_curves(x_train, y_train):
     X = x_train
     Y = y_train
@@ -387,12 +486,13 @@ def show_learning_curves(x_train, y_train):
     # SVM
     svm_parameters = {'kernel': 'linear', 'C': 0.025}
     # XGB
-    gbm_parameters = {'n_estimators': 2000, 'max_depth': 4, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
+    gbm_parameters = {'n_estimators': 500, 'max_depth': 5, 'min_child_weight': 2, 'gamma': 0.9, 'subsample': 0.8,
                       'colsample_bytree': 0.8, 'objective': 'binary:logistic', 'nthread': -1, 'scale_pos_weight': 1}
     title = "Learning Curves"
-    plot_learning_curve(RandomForestClassifier(**rf_parameters), title, X, Y, cv=None, n_jobs=4,
+    plot_learning_curve(ExtraTreesClassifier(**et_parameters), title, X, Y, cv=None, n_jobs=4,
                         train_sizes=[50, 100, 150, 200, 250, 350, 400, 450, 500])
     plt.show()
+
 
 if __name__ == '__main__':
     train_data_org, test_data_org = load_data()
@@ -405,14 +505,18 @@ if __name__ == '__main__':
     combined_train_test = process_family_size(combined_train_test)
     combined_train_test = process_age(combined_train_test)
     combined_train_test = process_ticket(combined_train_test)
+    combined_train_test = process_cabin(combined_train_test)
+    combined_train_test = process_pclass(combined_train_test)
     combined_train_test = regularization(combined_train_test)
-    combined_train_test.drop(['Cabin','PassengerId', 'Embarked', 'Sex', 'Name', 'Title', 'Fare_bin_id', 'Parch', 'SibSp', 'Family_Cate', 'Ticket'],axis=1,inplace=True)
-    train_data = combined_train_test[:891] 
-    test_data = combined_train_test[891:] 
-    titanic_train_data_X = train_data.drop(['Survived'],axis=1) 
-    titanic_train_data_Y = train_data['Survived'] 
-    titanic_test_data_X = test_data.drop(['Survived'],axis=1)
-    features_top_n, features_importance = get_top_n_features(titanic_train_data_X, titanic_train_data_Y, 10)
+    combined_train_test.drop(
+        ['PassengerId', 'Embarked', 'Sex', 'Name', 'Title', 'Fare_bin_id', 'Parch', 'SibSp', 'Family_Cate', 'Ticket','Pclass_Fare_Category'],
+        axis=1, inplace=True)
+    train_data = combined_train_test[:891]
+    test_data = combined_train_test[891:]
+    titanic_train_data_X = train_data.drop(['Survived'], axis=1)
+    titanic_train_data_Y = train_data['Survived']
+    titanic_test_data_X = test_data.drop(['Survived'], axis=1)
+    features_top_n, features_importance = get_top_n_features(titanic_train_data_X, titanic_train_data_Y, 20)
     # just use the selected features
     titanic_train_data_X = pd.DataFrame(titanic_train_data_X[features_top_n])
     titanic_test_data_X = pd.DataFrame(titanic_test_data_X[features_top_n])
@@ -422,12 +526,18 @@ if __name__ == '__main__':
     y_train = titanic_train_data_Y.values
     # Creats an array of the test data
     x_test = titanic_test_data_X.values
+    print(x_train.shape)
+    print(combined_train_test.info())
+    '''
     oof_train, oof_test = stacking_level_one(x_train,y_train,x_test)
     x_train_xg = np.concatenate(oof_train, axis=1)
     x_test_xg = np.concatenate(oof_test, axis=1)
     predictions = stacking_level_two(x_train_xg, y_train, x_test_xg)
-    PassengerId = test_data_org['PassengerId']
+
     StackingSubmission = pd.DataFrame({'PassengerId': PassengerId, 'Survived': predictions})
     StackingSubmission.to_csv('StackingSubmission.csv', index=False, sep=',')
+    '''
+    PassengerId = test_data_org['PassengerId']
     show_learning_curves(x_train, y_train)
-    
+    rf_learn_and_output(x_train, y_train, x_test, PassengerId)
+    # gbm_learn_and_output(x_train, y_train, x_test, PassengerId)
